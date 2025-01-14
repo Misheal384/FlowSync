@@ -10,24 +10,29 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-console.log("hey there");
-console.log(process.env.SLACK_BOT_TOKEN);
-
 // Connect to Database
 connectDB();
 
-//routes
+// Health check endpoint
 app.get('/', (req, res) =>{
   res.send("ok");
  });
-app.use('/teams',teamRoutes);
-app.use('/teams/:teamId/members',memberRoutes);
+
+// Register routes
+app.use('/teams', teamRoutes); // No need for ':teamId' here
+app.use('/teams/:teamId/members', memberRoutes); // Keep this as is
+
+
+app.use((req, res) => {
+  res.status(404).send(`Route not found: ${req.method} ${req.url}`);
+});
+
 
 
 // Start Slack Bot
 (async () => {
   try {
-    await slackApp.start(process.env.PORT ? parseInt(process.env.PORT) : 3000);
+    await slackApp.start(process.env.PORT ? parseInt(process.env.PORT) : 5000);
     console.log('⚡️ Slack Bolt app is running!');
   } catch (error) {
     console.error('Error starting Slack app:', error);
@@ -35,10 +40,13 @@ app.use('/teams/:teamId/members',memberRoutes);
   }
 })();
 
-
 // Start Express Server
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 app.listen(PORT, () => {
   console.log(`Express server is running on port ${PORT}`);
 });
+
+
+
+
 

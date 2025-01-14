@@ -4,9 +4,9 @@ import { createTeam, deleteTeam } from '../controllers/teamController';
 const router = express.Router();
 
 // Create a new team
-router.post('/teams', createTeam);
+router.post('/', createTeam);
 
 // Delete a team
-router.delete('/teams/:teamId', deleteTeam);
+router.delete('/:teamId', deleteTeam);
 
 export default router;
