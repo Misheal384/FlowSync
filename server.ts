@@ -34,10 +34,12 @@ app.use((req, res) => {
 
 
 // Start Slack Bot
+// Start Slack Bot on a separate port
 (async () => {
   try {
-    await slackApp.start(process.env.PORT ? parseInt(process.env.PORT) : 5000);
-    console.log('⚡️ Slack Bolt app is running!');
+    const SLACK_PORT = 3000; // Or any other available port
+    await slackApp.start(SLACK_PORT);
+    console.log(`⚡️ Slack Bolt app is running on port ${SLACK_PORT}`);
   } catch (error) {
     console.error('Error starting Slack app:', error);
     process.exit(1);

@@ -4,6 +4,6 @@ import { submitStandup, getStandupAnswers } from '../controllers/standupControll
 const router = express.Router();
 
 router.post('/teams/:teamId/members/:memberId/standup', submitStandup);
-router.get('/standups', getStandupAnswers);
+router.get('/', getStandupAnswers);
 
 export default router;
