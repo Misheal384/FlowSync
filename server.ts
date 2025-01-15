@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import teamRoutes from './server/routes/teamRoutes';
 import memberRoutes from './server/routes/memberRoutes';
+import standupRoutes from './server/routes/standupRoutes';
 import { connectDB } from './server/config/database';
 import { slackApp } from './server/config/slack';
 
@@ -15,12 +16,15 @@ connectDB();
 
 // Health check endpoint
 app.get('/', (req, res) =>{
+  console.log('heath check');
   res.send("ok");
  });
 
 // Register routes
 app.use('/teams', teamRoutes); // No need for ':teamId' here
 app.use('/teams/:teamId/members', memberRoutes); // Keep this as is
+app.use('/standups', standupRoutes); // Register the standup routes
+
 
 
 app.use((req, res) => {
