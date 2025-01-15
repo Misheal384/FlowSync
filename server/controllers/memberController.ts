@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { Member } from '../models/Member';
 import { Team } from '../models/Team';
+import { WebClient } from '@slack/web-api';
+const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
+import schedule from 'node-schedule';
 
 export const addMember = async (req: Request, res: Response): Promise<void> => {
   const { name, slackId } = req.body;
@@ -27,3 +30,24 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({ error: error.message });
   }
 };
+
+//sending reminders to a team member
+export function scheduleMemberReminder(channel: string, text: string, scheduleTime: Date, memberId: string): void {
+  schedule.scheduleJob(scheduleTime, async () => {
+      try {
+          const member = await Member.findById(memberId);
+          if (!member) {
+              throw new Error(`Member with ID ${memberId} not found`);
+          }
+
+          const result = await slackClient.chat.postMessage({
+              channel,
+              text: `${member.name}, ${text}`,
+          });
+          console.log(`Reminder sent to channel ${channel}:`, result);
+      } catch (error) {
+          console.error(`Failed to send reminder to channel ${channel}:`, error);
+      }
+  });
+}
+

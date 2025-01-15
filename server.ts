@@ -5,6 +5,10 @@ import memberRoutes from './server/routes/memberRoutes';
 import { connectDB } from './server/config/database';
 import { slackApp } from './server/config/slack';
 
+//swagger ui implementation
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./swaggerConfig";
+
 dotenv.config();
 
 const app = express();
@@ -14,6 +18,7 @@ app.use(express.json());
 connectDB();
 
 // Health check endpoint
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/', (req, res) =>{
   res.send("ok");
  });
@@ -27,15 +32,34 @@ app.use((req, res) => {
   res.status(404).send(`Route not found: ${req.method} ${req.url}`);
 });
 
-
+//simple message to the bot
+// Listen for messages in channels or direct messages
+// Listen for messages
+slackApp.message(async ({ message, client }) => {
+  // Type narrowing: Check if `message` has a `user` property
+  if ('user' in message && typeof message.user === 'string') {
+    try {
+      // Send a reply in the same channel
+      await client.chat.postMessage({
+        channel: message.channel,
+        text: `Hello <@${message.user}>! You said: "${message.text}"`,
+        thread_ts: message.ts, // Reply in a thread if needed
+      });
+    } catch (error) {
+      console.error('Error replying to message:', error);
+    }
+  } else {
+    console.log('Received a message without a user property:', message);
+  }
+});
 
 // Start Slack Bot
 (async () => {
   try {
     await slackApp.start(process.env.PORT ? parseInt(process.env.PORT) : 5000);
-    console.log('⚡️ Slack Bolt app is running!');
+    console.log('⚡️ FlowSync app is running!');
   } catch (error) {
-    console.error('Error starting Slack app:', error);
+    console.error('Error starting FlowSync app:', error);
     process.exit(1);
   }
 })();
@@ -43,7 +67,7 @@ app.use((req, res) => {
 // Start Express Server
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 5000;
 app.listen(PORT, () => {
-  console.log(`Express server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 
