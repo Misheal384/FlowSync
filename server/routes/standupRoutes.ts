@@ -7,3 +7,4 @@ router.post('/teams/:teamId/members/:memberId/standup', submitStandup);
 router.get('/', getStandupAnswers);
 
 export default router;
+    
