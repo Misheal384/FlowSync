@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import teamRoutes from './server/routes/teamRoutes';
 import memberRoutes from './server/routes/memberRoutes';
+import standupRoutes from './server/routes/standupRoutes';
 import { connectDB } from './server/config/database';
 import { slackApp } from './server/config/slack';
 
@@ -19,13 +20,18 @@ connectDB();
 
 // Health check endpoint
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+//a simple root route to the backend 
 app.get('/', (req, res) =>{
+  console.log('heath check');
   res.send("ok");
  });
 
 // Register routes
 app.use('/teams', teamRoutes); // No need for ':teamId' here
 app.use('/teams/:teamId/members', memberRoutes); // Keep this as is
+app.use('/standups', standupRoutes); // Register the standup routes
+
 
 
 app.use((req, res) => {
@@ -35,28 +41,26 @@ app.use((req, res) => {
 //simple message to the bot
 // Listen for messages in channels or direct messages
 // Listen for messages
-slackApp.message(async ({ message, client }) => {
-  // Type narrowing: Check if `message` has a `user` property
-  if ('user' in message && typeof message.user === 'string') {
+slackApp.message('hi', async ({ message, say }) => {
+  // Type guard to ensure message has user property
+  if ('user' in message) {
     try {
-      // Send a reply in the same channel
-      await client.chat.postMessage({
-        channel: message.channel,
-        text: `Hello <@${message.user}>! You said: "${message.text}"`,
-        thread_ts: message.ts, // Reply in a thread if needed
+      await say({
+        text: `Hello <@${message.user}>! 👋 How can I help you today?`,
+        channel: message.channel
       });
     } catch (error) {
-      console.error('Error replying to message:', error);
+      console.error('Error sending message:', error);
     }
-  } else {
-    console.log('Received a message without a user property:', message);
   }
 });
+
+
 
 // Start Slack Bot
 (async () => {
   try {
-    await slackApp.start(process.env.PORT ? parseInt(process.env.PORT) : 5000);
+    await slackApp.start(process.env.SLACK_PORT ? parseInt(process.env.SLACK_PORT) : 4000);
     console.log('⚡️ FlowSync app is running!');
   } catch (error) {
     console.error('Error starting FlowSync app:', error);
