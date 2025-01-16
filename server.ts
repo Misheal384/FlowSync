@@ -58,10 +58,12 @@ slackApp.message('hi', async ({ message, say }) => {
 
 
 // Start Slack Bot
+// Start Slack Bot on a separate port
 (async () => {
   try {
-    await slackApp.start(process.env.SLACK_PORT ? parseInt(process.env.SLACK_PORT) : 4000);
-    console.log('⚡️ FlowSync app is running!');
+    const SLACK_PORT = 3000; 
+    await slackApp.start(SLACK_PORT);
+    console.log(`⚡️ Slack Bolt app is running on port ${SLACK_PORT}`);
   } catch (error) {
     console.error('Error starting FlowSync app:', error);
     process.exit(1);
