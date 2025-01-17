@@ -5,6 +5,8 @@ import memberRoutes from './server/routes/memberRoutes';
 import standupRoutes from './server/routes/standupRoutes';
 import { connectDB } from './server/config/database';
 import { slackApp } from './server/config/slack';
+import { appMentionRespond, greetingRespond } from './server/slack_activities/interactions';
+import { home_pub } from './server/slack_activities/slack_home';
 
 //swagger ui implementation
 import swaggerUi from "swagger-ui-express";
@@ -29,7 +31,7 @@ app.get('/', (req, res) =>{
 
 // Register routes
 app.use('/teams', teamRoutes); // No need for ':teamId' here
-app.use('/teams/:teamId/members', memberRoutes); // Keep this as is
+app.use('/members', memberRoutes); // Keep this as is
 app.use('/standups', standupRoutes); // Register the standup routes
 
 
@@ -38,32 +40,21 @@ app.use((req, res) => {
   res.status(404).send(`Route not found: ${req.method} ${req.url}`);
 });
 
-//simple message to the bot
-// Listen for messages in channels or direct messages
-// Listen for messages
-slackApp.message('hi', async ({ message, say }) => {
-  // Type guard to ensure message has user property
-  if ('user' in message) {
-    try {
-      await say({
-        text: `Hello <@${message.user}>! 👋 How can I help you today?`,
-        channel: message.channel
-      });
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
-  }
-});
+//slack interactions
+appMentionRespond();
+greetingRespond();
+
+//slack rendering
+home_pub();
 
 
 
 // Start Slack Bot
-// Start Slack Bot on a separate port
 (async () => {
   try {
     const SLACK_PORT = 3000; 
     await slackApp.start(SLACK_PORT);
-    console.log(`⚡️ Slack Bolt app is running on port ${SLACK_PORT}`);
+    console.log(`⚡️ FlowSync app is running on port ${SLACK_PORT}`);
   } catch (error) {
     console.error('Error starting FlowSync app:', error);
     process.exit(1);

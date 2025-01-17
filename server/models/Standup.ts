@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
+//import { Question } from './Question';
 
 export interface IStandup extends Document {
   team: Types.ObjectId;
@@ -11,10 +12,9 @@ const standupSchema: Schema = new Schema({
   team: { type: Schema.Types.ObjectId, ref: 'Team', required: true },
   member: { type: Schema.Types.ObjectId, ref: 'Member', required: true },
   date: { type: Date, required: true },
-  answers: [
+  update: [
     {
-      question: { type: String, required: true },
-      answer: { type: String, required: true },
+      question: {type: Schema.Types.ObjectId, ref: 'Question', required: true},
     },
   ],
 });

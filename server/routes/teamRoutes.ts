@@ -1,15 +1,14 @@
 import express from 'express';
-import { createTeam, deleteTeam, scheduleTeamReminder } from '../controllers/teamController';
+import { createTeam, deleteTeam, getTeams, scheduleTeamReminder } from '../controllers/teamController';
 
 
 
 const router = express.Router();
 
-// Create a new team
-router.get('/', (req, res) => {
-    res.json({ message: 'Welcome to FlowSync!' });
-});
+// get all team
+router.get('/', getTeams);
 
+//create a new team
 router.post('/', createTeam);
 
 // Delete a team

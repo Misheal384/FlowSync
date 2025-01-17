@@ -1,10 +1,54 @@
 import { Request, Response } from 'express';
 import { Standup } from '../models/Standup';
+import { Question } from '../models/Question';
 import { Team } from '../models/Team';
 
+//function to submit standup questions configured
+export const configureStandupQuestions = async (req: Request, res: Response): Promise<void> => {
+    const { teamId } = req.params;
+    const { questions } = req.body;
+
+    try {
+      const team = await Team.findById(teamId);
+
+      if (!team) {
+        throw new Error(`Team with ID ${teamId} not found`);
+      }
+
+      await Question.deleteMany({ team: teamId });
+
+      for (const question of questions) {
+        const newQuestion = new Question({ team: teamId, text: question.text, answer: question.answer });
+        await newQuestion.save();
+      }
+
+      res.status(201).json({ message: 'Standup questions configured successfully' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    
+  }
+}
+
+//function to get configured standup questions
+export const getStandupQuestions = async (req: Request, res: Response): Promise<void> => {
+    const { teamId } = req.params;
+
+    try {
+      const questions = await Question.find({ team: teamId });
+      res.json(questions);
+    }
+    catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+  
+
+
+
+//function to submit standup updates to the database
 export const submitStandup = async (req: Request, res: Response): Promise<void> => {
   const { teamId, memberId } = req.params;
-  const { answers } = req.body; // Array of { question, answer }
+  const { update } = req.body; 
 
   try {
     const team = await Team.findById(teamId);
@@ -28,7 +72,7 @@ export const submitStandup = async (req: Request, res: Response): Promise<void> 
       team: teamId,
       member: memberId,
       date: today,
-      answers,
+      update,
     });
 
     await standup.save();
@@ -38,6 +82,8 @@ export const submitStandup = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+
+//function to get standup answers from the database
 export const getStandupAnswers = async (req: Request, res: Response): Promise<void> => {
     const { teamId, date, memberId } = req.query;
   

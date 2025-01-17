@@ -1,7 +1,33 @@
 import express from 'express';
-import { addMember, removeMember } from '../controllers/memberController';
+import { addMember, removeMember, getMembers, getAllUsers} from '../controllers/memberController';
 
 const router = express.Router();
+
+//get all members in the workspace
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get all members in the workspace
+ *    
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/', getAllUsers);
+
+//get all members from a team
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get all members from a team
+ *    
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/:teamId/', getMembers);
 
 // Add a member to a team
 /**
@@ -14,7 +40,7 @@ const router = express.Router();
  *       200:
  *         description: Success
  */
-router.post('/', addMember);
+router.post('/:teamId/', addMember);
 
 // Remove a member from a team
 /**
@@ -30,6 +56,6 @@ router.post('/', addMember);
  *       200:
  *         description: Success
  */
-router.delete('/:memberId', removeMember);
+router.delete('/:teamId/:memberId', removeMember);
 
 export default router;
