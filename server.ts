@@ -75,7 +75,7 @@ async function getTeamsWithMembers() {
       // Fetch members for each channel
       if(channels){
         const teamsWithMembers = await Promise.all(
-          channels.map(async (channel) => {
+          channels.map(async (channel: { id?: string; name?: string }) => {
             if(channel.id){
               const members = await getChannelMembers(channel.id);
               return {
