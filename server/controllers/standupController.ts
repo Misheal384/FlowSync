@@ -143,7 +143,7 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
     }
   };
 
-  //also function to get responders
+  //also function to get responders and send them
   export const getResponded = async (req: Request, res: Response): Promise<void> => {
     const { teamId } = req.query;
   
