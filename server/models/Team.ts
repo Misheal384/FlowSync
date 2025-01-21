@@ -11,7 +11,7 @@ const teamSchema: Schema = new Schema({
   name: { type: String, required: true, unique: true },
   timezone: { type: String, required: true },
   slackChannelId: { type: String, required: false },
-  members: [{ type: Schema.Types.ObjectId, ref: 'Member' }],
+  members: [{type: String}],
 });
 
 export const Team = mongoose.model<ITeam>('Team', teamSchema);

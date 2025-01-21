@@ -19,6 +19,14 @@ export const addMember = async (req: Request, res: Response): Promise<void> => {
       users: slackId, 
     });
 
+    //then put the team into the database
+    const team = await Team.findByIdAndUpdate(teamId, { $push: { members: slackId } }, { new: true });
+
+    if (!team) {
+      throw new Error(`Team with ID ${teamId} not found`);
+    }
+
+
     res.status(201).json({ message: 'Member added successfully', name });
   } catch (error: any) {
     console.error('Error in addMember:', {

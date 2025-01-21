@@ -11,11 +11,9 @@ export const createTeam = async (req: Request, res: Response): Promise<void> => 
   console.log('Received POST /teams request with body:', req.body);
 
   try {
-    // Step 1: Save the team to the database
     const team = new Team({ name, timezone });
     await team.save();
 
-    // Step 2: Create a Slack channel
     const channelName = `team-${team.name.toLowerCase().replace(/\s+/g, '-')}`; // Format channel name
     const slackChannelResponse = await slackClient.conversations.create({
       name: channelName,
@@ -49,30 +47,16 @@ export const createTeam = async (req: Request, res: Response): Promise<void> => 
 //function required to get all teams
 export const getTeams = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Step 1: Fetch channels from Slack workspace
-    const response = await slackClient.conversations.list({
-      types: 'public_channel,private_channel',  // You can specify the types of channels you want
-    });
-
-    // Step 2: Check if the API call was successful
-    if (!response.ok) {
-      res.status(400).json({ error: 'Failed to retrieve channels from Slack' });
-      return;
-    }
-
-    // Step 3: Extract the channels from the response
-    const channels = response.channels;
-
-    // Step 4: Respond with the list of channels (teams)
-    res.status(200).json({ teams: channels });
+    const teams = await Team.find();
+    res.json(teams);
   } catch (error: any) {
     // Enhanced error logging
-    console.error('Error in getTeams:', {
+    console.error('Error in getAllTeams:', {
       message: error.message,
       stack: error.stack,
     });
 
-    res.status(400).json({ error: error.message || 'Unknown error occurred' });
+    res.status(400).json({ error: error.message });
   }
 };
 

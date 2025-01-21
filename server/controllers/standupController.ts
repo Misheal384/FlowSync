@@ -11,22 +11,10 @@ export const configureStandupQuestions = async (req: Request, res: Response): Pr
 
   try {
     // Check if the Slack channel exists
-    const slackResponse = await slackClient.conversations.info({ channel: teamId });
-    const channelExists = slackResponse.ok && slackResponse.channel;
+    const channelExists = await Team.findOne({ _id: teamId });
 
     if (!channelExists) {
       throw new Error(`Slack channel with ID ${teamId} not found`);
-    }
-
-    // Check if the team exists in the database
-    let team = await Team.findOne({ slackChannelId: teamId });
-
-    if (!team) {
-      // If the team is not found, add it to the database
-      if(slackResponse && slackResponse.channel){
-        team = new Team({ name: slackResponse.channel.name, slackChannelId: teamId, timezone: 'UTC' });
-        await team.save();
-      }
     }
 
     // Delete existing questions for the team
@@ -50,7 +38,7 @@ export const getStandupQuestions = async (req: Request, res: Response): Promise<
 
     try {
       const questions = await Question.find({ team: teamId });
-      res.json(questions);
+      res.json({questions:questions});
     }
     catch (error: any) {
       res.status(400).json({ error: error.message });
@@ -145,7 +133,7 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
       if (formattedDate) query.date = formattedDate;
   
       const standups = await Standup.find(query);
-      const members = await Team.findOne({ slackChannelId: teamId }).populate('members');
+      const members = await Team.findOne({ _id: teamId }).populate('members');
   
       if (!members) {
         res.status(404).json({ error: 'Team not found' });
