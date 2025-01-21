@@ -12,7 +12,7 @@ import {web as slackClient} from './server/config/slack';
 import { Team } from './server/models/Team';
 import {redisClient} from './server/config/redis';
 
-
+import cors from 'cors';
 
 //swagger ui implementation
 import swaggerUi from "swagger-ui-express";
@@ -22,6 +22,7 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 // Connect to Database
 connectDB();

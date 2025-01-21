@@ -11,7 +11,7 @@ export const configureStandupQuestions = async (req: Request, res: Response): Pr
 
   try {
     // Check if the Slack channel exists
-    const channelExists = await Team.findOne({ _id: teamId });
+    const channelExists = await Team.findOne({ slackChannelId: teamId });
 
     if (!channelExists) {
       throw new Error(`Slack channel with ID ${teamId} not found`);
@@ -44,6 +44,16 @@ export const getStandupQuestions = async (req: Request, res: Response): Promise<
       res.status(400).json({ error: error.message });
     }
   }
+
+//function to get all configured standup questions
+export const getAllStandupQuestions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const questions = await Question.find();
+    res.json({ questions: questions });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
 
 
 //function to submit standup updates to the database
@@ -113,39 +123,37 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
     }
   }  
 
-  //function to get not responded members
+  /*function to get responders and non-responders
+  this function is used to get the list of members who have not responded to the standup by checking the answers database and dates attached to them
+  a date is attached to each standup update and if the date is not today, then the member has not responded. */
   export const getNotResponded = async (req: Request, res: Response): Promise<void> => {
-    const { teamId, date } = req.query;
+    const { teamId } = req.query;
   
     try {
-      // Validate the date
-      let formattedDate: string | undefined;
-      if (date) {
-        const parsedDate = new Date(date as string);
-        if (isNaN(parsedDate.getTime())) {
-          throw new Error('Invalid date format');
-        }
-        formattedDate = parsedDate.toISOString().split('T')[0];
-      }
+      const today = new Date().toISOString().split('T')[0];
+      const standups = await Standup.find({ team: teamId, date: today });
+      const members = standups.map((standup) => standup.member);
   
-      const query: any = {};
-      if (teamId) query.team = teamId;
-      if (formattedDate) query.date = formattedDate;
+      const allMembers = await Team.findById(teamId).select('members');
+      const nonResponders = allMembers ? allMembers.members.filter((member: any) => !members.includes(member)) : [];
   
-      const standups = await Standup.find(query);
-      const members = await Team.findOne({ _id: teamId }).populate('members');
-  
-      if (!members) {
-        res.status(404).json({ error: 'Team not found' });
-        return;
-      }
-  
-      const respondedMembers = standups.map((standup) => standup.member.toString());
-      const notResponded = members.members.filter((member: any) => !respondedMembers.includes(member._id.toString()));
-  
-      res.status(200).json({ notResponded });
+      res.status(200).json({ nonResponders });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   };
+
+  //also function to get responders
+  export const getResponded = async (req: Request, res: Response): Promise<void> => {
+    const { teamId } = req.query;
   
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const standups = await Standup.find({ team: teamId, date: today });
+      const members = standups.map((standup) => standup.member);
+  
+      res.status(200).json({ members });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };

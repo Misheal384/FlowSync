@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Team } from '../models/Team';
+import { Question} from '../models/Question';
 
 
 import {web as slackClient} from '../config/slack';
@@ -7,11 +8,11 @@ import schedule from 'node-schedule';
 
 //function required to create a team
 export const createTeam = async (req: Request, res: Response): Promise<void> => {
-  const { name, timezone } = req.body;
+  const { name, timezone, schedule } = req.body;
   console.log('Received POST /teams request with body:', req.body);
 
   try {
-    const team = new Team({ name, timezone });
+    const team = new Team({ name, timezone, schedule });
     await team.save();
 
     const channelName = `team-${team.name.toLowerCase().replace(/\s+/g, '-')}`; // Format channel name
@@ -52,6 +53,31 @@ export const getTeams = async (req: Request, res: Response): Promise<void> => {
   } catch (error: any) {
     // Enhanced error logging
     console.error('Error in getAllTeams:', {
+      message: error.message,
+      stack: error.stack,
+    });
+
+    res.status(400).json({ error: error.message });
+  }
+};
+
+//get all teams and the questions attached to them
+export const getTeamsWithQuestions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const teams = await Team.find();
+    const teamsWithQuestions = await Promise.all(
+      teams.map(async (team) => {
+        const questions = await Question.find({ team: team.slackChannelId });
+        return {
+          team,
+          questions,
+        };
+      })
+    );
+    res.json(teamsWithQuestions);
+  } catch (error: any) {
+    // Enhanced error logging
+    console.error('Error in getTeamsWithQuestions:', {
       message: error.message,
       stack: error.stack,
     });

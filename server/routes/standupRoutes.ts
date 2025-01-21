@@ -1,16 +1,19 @@
 import express from 'express';
-import { submitStandup, getStandupAnswers, configureStandupQuestions, getStandupQuestions, getNotResponded } from '../controllers/standupController';
+import { submitStandup, getStandupAnswers,getAllStandupQuestions, configureStandupQuestions, getStandupQuestions, getNotResponded } from '../controllers/standupController';
 
 const router = express.Router();
 
 //configure standup questions for a team
-router.post('/teams/:teamId/configure', configureStandupQuestions);
+router.post('/team/:teamId/configure', configureStandupQuestions);
 
 //get standup questions
-router.get('/teams/:teamId/questions', getStandupQuestions);
+router.get('/team/:teamId/questions', getStandupQuestions);
+
+//get all standup questions
+router.get('/questions', getAllStandupQuestions);
 
 //submit standup update
-router.post('/teams/:teamId/members/:memberId/standup', submitStandup);
+router.post('/team/:teamId/members/:memberId/standup', submitStandup);
 
 //get standup answers
 router.get('/answers', getStandupAnswers);

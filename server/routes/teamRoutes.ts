@@ -1,5 +1,5 @@
 import express from 'express';
-import { createTeam, deleteTeam, getTeams, scheduleTeamReminder } from '../controllers/teamController';
+import { createTeam, deleteTeam, getTeams,getTeamsWithQuestions, scheduleTeamReminder } from '../controllers/teamController';
 
 
 
@@ -7,6 +7,9 @@ const router = express.Router();
 
 // get all team
 router.get('/', getTeams);
+
+//get all teams with questions
+router.get('/questions', getTeamsWithQuestions);
 
 //create a new team
 router.post('/', createTeam);
