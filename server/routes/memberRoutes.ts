@@ -1,12 +1,61 @@
 import express from 'express';
-import { addMember, removeMember } from '../controllers/memberController';
+import { addMember, removeMember, getMembers, getAllUsers} from '../controllers/memberController';
 
 const router = express.Router();
 
+//get all members in the workspace
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get all members in the workspace
+ *    
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/', getAllUsers);
+
+//get all members from a team
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Get all members from a team
+ *    
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get('/:teamId/', getMembers);
+
 // Add a member to a team
-router.post('/', addMember);
+/**
+ * @swagger
+ * /:
+ *   post:
+ *     summary: Add a member to team
+ *    
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.post('/:teamId/', addMember);
 
 // Remove a member from a team
-router.delete('/:memberId', removeMember);
+/**
+ * @swagger
+ * /:
+ *   get: 
+ *     summary: Delete team member
+ *     parameters:
+ *       MemberId:
+ *          description: team member id
+ *     
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.delete('/:teamId/:memberId', removeMember);
 
 export default router;
