@@ -37,9 +37,9 @@ app.get('/', (req, res) =>{
  });
 
 // Register routes
-app.use('/teams', teamRoutes); // No need for ':teamId' here
-app.use('/members', memberRoutes); // Keep this as is
-app.use('/standups', standupRoutes); // Register the standup routes
+app.use('/api/teams', teamRoutes); // No need for ':teamId' here
+app.use('/api/members', memberRoutes); // Keep this as is
+app.use('/api/standups', standupRoutes); // Register the standup routes
 app.use((req, res) => {
   res.status(404).send(`Route not found: ${req.method} ${req.url}`);
 });

@@ -104,13 +104,18 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
       if (date) query.date = new Date(date as string).toISOString().split('T')[0];
       if (memberId) query.member = memberId;
   
-      const standups = await Standup.find(query).populate('member', 'name').populate('team', 'name');
+      const standups = await Standup.find(query)
+      .populate({ path: 'team', select: 'name', options: { strictPopulate: false } })
+      .populate('member', 'name');
+
   
       res.status(200).json({ standups });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   };
+
+  //funtion to get standups for a team
     export const getTeamStandups = async (req: Request, res: Response): Promise<void> => {
     const { teamId } = req.params;
   
@@ -153,6 +158,16 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
       const members = standups.map((standup) => standup.member);
   
       res.status(200).json({ members });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  };
+
+  //get all standups
+  export const getAllStandups = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const standups = await Standup.find().populate('member', 'name').populate('team', 'name');
+      res.status(200).json({ standups });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
