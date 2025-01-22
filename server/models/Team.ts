@@ -6,13 +6,15 @@ export interface ITeam extends Document {
   slackChannelId: string;
   schedule: string;
   members: Types.ObjectId[];
+  description: string;
 }
 
 const teamSchema: Schema = new Schema({
   name: { type: String, required: true, unique: true },
-  timezone: { type: String, required: true },
-  schedule: { type: String, required: true },
+  timezone: { type: String },
+  schedule: { type: String },
   slackChannelId: { type: String, required: false },
+  description: { type: String },
   members: [{type: String}],
 });
 

@@ -8,11 +8,11 @@ import schedule from 'node-schedule';
 
 //function required to create a team
 export const createTeam = async (req: Request, res: Response): Promise<void> => {
-  const { name, timezone, schedule } = req.body;
+  const { name, description } = req.body;
   console.log('Received POST /teams request with body:', req.body);
 
   try {
-    const team = new Team({ name, timezone, schedule });
+    const team = new Team({ name, description});
     await team.save();
 
     const channelName = `team-${team.name.toLowerCase().replace(/\s+/g, '-')}`; // Format channel name
