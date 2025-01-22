@@ -8,28 +8,53 @@ import {web as slackClient} from '../config/slack';
 import schedule from 'node-schedule';
 
 //function to  add member to a team
-export const addMember = async (req: Request, res: Response): Promise<void> => {
-  const { name, slackId } = req.body;
+export const addMembers = async (req: Request, res: Response): Promise<void> => {
+  const { members } = req.body; // Expecting an array of members
   const { teamId } = req.params;
+
+  if (!Array.isArray(members)) {
+    res.status(400).json({ error: 'Invalid request body. "members" should be an array.' });
+    return;
+  }
 
   try {
     const slackChannelId = teamId;
-    await slackClient.conversations.invite({
-      channel: slackChannelId,
-      users: slackId, 
-    });
+    const teamUpdates: any[] = []; // To keep track of successful updates
 
-    //then put the team into the database
-    const team = await Team.findByIdAndUpdate(teamId, { $push: { members: slackId } }, { new: true });
+    for (const member of members) {
+      const { name, slackId } = member;
 
-    if (!team) {
-      throw new Error(`Team with ID ${teamId} not found`);
+      if (!name || !slackId) {
+        res.status(400).json({ error: 'Each member must have "name" and "slackId".' });
+        return;
+      }
+
+      // Invite the member to the Slack channel
+      await slackClient.conversations.invite({
+        channel: slackChannelId,
+        users: slackId,
+      });
+
+      // Update the team in the database
+      const team = await Team.findByIdAndUpdate(
+        teamId,
+        { $push: { members: slackId } },
+        { new: true }
+      );
+
+      if (!team) {
+        throw new Error(`Team with ID ${teamId} not found`);
+      }
+
+      teamUpdates.push({ name, slackId });
     }
 
-
-    res.status(201).json({ message: 'Member added successfully', name });
+    res.status(201).json({
+      message: 'Members added successfully',
+      addedMembers: teamUpdates,
+    });
   } catch (error: any) {
-    console.error('Error in addMember:', {
+    console.error('Error in addMembers:', {
       message: error.message,
       stack: error.stack,
     });
@@ -37,6 +62,7 @@ export const addMember = async (req: Request, res: Response): Promise<void> => {
     res.status(400).json({ error: error.message || 'Unknown error occurred' });
   }
 };
+
 
 //get all members from the workspace
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
