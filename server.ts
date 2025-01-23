@@ -68,7 +68,7 @@ async function getTeamsWithMembers() {
   try {
     // Fetch the list of channels
     const response = await slackClient.conversations.list();
-    console.log(response);
+    
     if (response.ok) {
       const channels = response.channels;
 
@@ -104,24 +104,37 @@ getTeamsWithMembers().then(async (teamsWithMembers) => {
     try {
       // Iterate using for...of to properly handle async operations sequentially
       for (const team of teamsWithMembers) {
-        if (team && team.id ) {
+        console.log(team);
+        if (team && team.id) {
           const existingTeam = await Team.findOne({ slackChannelId: team.id });
-          if (!existingTeam ) {
+          if (existingTeam) {
+            // Update the existing team
+            await Team.updateOne(
+              { slackChannelId: team.id },
+              {
+                name: team.name,
+                members: team.members,
+                timezone: "UTC",
+              }
+            );
+          } else {
+            // Create a new team
             await Team.create({
               slackChannelId: team.id,
               name: team.name,
               members: team.members,
-              timezone: "UTC"
+              timezone: "UTC",
             });
           }
         }
       }
-      console.log('All teams and their members have been processed successfully');('All teams and their members have been processed successfully');
+      console.log('All teams and their members have been processed successfully');
     } catch (error) {
       console.error('Error while processing teams:', error);
     }
   }
 });
+
 
 //now get all members from slack and then name take on their name and id and cache it in redis
 async function cacheMembersInRedis() {
