@@ -29,24 +29,32 @@ export const addMembers = async (req: Request, res: Response): Promise<void> => 
         return;
       }
 
-      // Invite the member to the Slack channel
-      await slackClient.conversations.invite({
-        channel: slackChannelId,
-        users: slackId,
-      });
+      try {
+        // Invite the member to the Slack channel
+        await slackClient.conversations.invite({
+          channel: slackChannelId,
+          users: slackId,
+        });
 
-      // Update the team in the database
-      const team = await Team.findByIdAndUpdate(
-        teamId,
-        { $push: { members: slackId } },
-        { new: true }
-      );
+        // Update the team in the database
+        const team = await Team.findOneAndUpdate(
+          { slackChannelId: teamId },
+          { $push: { members: slackId } },
+          { new: true }
+        );
 
-      if (!team) {
-        throw new Error(`Team with ID ${teamId} not found`);
+        if (!team) {
+          throw new Error(`Team with Slack ID ${teamId} not found`);
+        }
+
+        teamUpdates.push({ name, slackId });
+      } catch (inviteError: any) {
+        if (inviteError.data.error === 'already_in_channel') {
+          console.warn(`User ${slackId} is already in the channel.`);
+        } else {
+          throw inviteError;
+        }
       }
-
-      teamUpdates.push({ name, slackId });
     }
 
     res.status(201).json({
@@ -102,21 +110,28 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 //get all members from a team
 export const getMembers = async (req: Request, res: Response): Promise<void> => {
   const { teamId } = req.params;
+  console.log(`Team ID: ${teamId}`);
 
   try {
     // Find the team in your database
     const team = await Team.findOne({ slackChannelId: teamId }).populate('members');
+    console.log(`Team: ${team}`);
+
     if (!team) {
+      console.log(`Team not found`);
       res.status(404).json({ error: 'Team not found' });
       return;
     }
 
     // Fetch channel members from Slack API
     const response = await slackClient.conversations.members({ channel: teamId });
+    console.log(`Slack API response: ${response}`);
+
     const slackMemberIds = response.members;
-    console.log(response)
+    console.log(`Slack member IDs: ${slackMemberIds}`);
 
     if (!slackMemberIds) {
+      console.log(`No members found`);
       res.status(404).json({ error: 'No members found in the Slack channel' });
       return;
     }
@@ -124,11 +139,10 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
     // Respond with the team's name and Slack members
     res.status(200).json({ name: team.name, members: slackMemberIds });
   } catch (error: any) {
-    console.error('Error fetching channel members:', error);
+    console.error(`Error fetching channel members: ${error}`);
     res.status(400).json({ error: error.message });
   }
 };
-
 //function to remove slack members from a team by their id
 export const removeMember = async (req: Request, res: Response): Promise<void> => {
   const { teamId, memberId } = req.params; // Ensure these are sent in the request body
@@ -140,7 +154,18 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       user: memberId,
     });
 
-    res.status(200).json({ message: `User ${memberId} has been removed from channel ${teamId}.` });
+    // Update the team in the database
+    const team = await Team.findOneAndUpdate(
+      { slackChannelId: teamId },
+      { $pull: { members: memberId } },
+      { new: true }
+    );
+
+    if (!team) {
+      throw new Error(`Team with Slack ID ${teamId} not found`);
+    }
+
+    res.status(200).json({ message: `User ${memberId} has been removed from channel ${teamId} and the team.` });
   } catch (error: any) {
     console.error('Error removing user from channel:', error);
     res.status(400).json({ error: error.message });
@@ -166,4 +191,3 @@ export function scheduleMemberReminder(channel: string, text: string, scheduleTi
       }
   });
 }
-
