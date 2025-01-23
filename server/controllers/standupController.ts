@@ -62,7 +62,7 @@ export const submitStandup = async (req: Request, res: Response): Promise<void> 
   const { update } = req.body; 
 
   try {
-    const team = await Team.findById(teamId);
+    const team = await Team.findOne({slackChannelId: teamId});
 
     if (!team) {
       throw new Error(`Team with ID ${teamId} not found`);
@@ -70,7 +70,7 @@ export const submitStandup = async (req: Request, res: Response): Promise<void> 
 
     const today = new Date().toISOString().split('T')[0]; // Ensure date consistency
     const existingStandup = await Standup.findOne({
-      team: teamId,
+      team: team.id,
       member: memberId,
       date: today,
     });
@@ -80,7 +80,7 @@ export const submitStandup = async (req: Request, res: Response): Promise<void> 
     }
 
     const standup = new Standup({
-      team: teamId,
+      team: team.id,
       member: memberId,
       date: today,
       update,
@@ -105,7 +105,7 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
       if (memberId) query.member = memberId;
   
       const standups = await Standup.find(query)
-      .populate({ path: 'team', select: 'name', options: { strictPopulate: false } })
+      .populate({ path: 'team', select: 'name', options: { strictPopulate: true } })
       .populate('member', 'name');
 
   
@@ -135,18 +135,33 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
     const { teamId } = req.query;
   
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const standups = await Standup.find({ team: teamId, date: today });
+      const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+      
+      // Query for standups for today for the given team
+      const standups = await Standup.find({
+        team: teamId,
+        date: { $gte: today, $lt: new Date(new Date(today).setDate(new Date(today).getDate() + 1)) }
+      });
+  
+      // Map the standups to get the list of members who have submitted their standups
       const members = standups.map((standup) => standup.member);
   
+      // Fetch all team members
       const allMembers = await Team.findById(teamId).select('members');
-      const nonResponders = allMembers ? allMembers.members.filter((member: any) => !members.includes(member)) : [];
   
+      // If no standups were found, all members are non-responders
+      const nonResponders = allMembers
+        ? allMembers.members.filter((member: any) => !members.includes(member))
+        : [];
+  
+      // Send the list of non-responders in the response
       res.status(200).json({ nonResponders });
     } catch (error: any) {
+      // Handle any errors
       res.status(400).json({ error: error.message });
     }
   };
+  
 
   //also function to get responders and send them
   export const getResponded = async (req: Request, res: Response): Promise<void> => {
@@ -166,7 +181,10 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
   //get all standups
   export const getAllStandups = async (req: Request, res: Response): Promise<void> => {
     try {
-      const standups = await Standup.find().populate('member', 'name').populate('team', 'name');
+      const standups = await Standup.find()
+      .populate({ path: 'team', select: 'name', options: { strictPopulate: true } })
+      .populate('member', 'name');
+
       res.status(200).json({ standups });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

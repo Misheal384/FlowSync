@@ -140,6 +140,9 @@ export const removeMember = async (req: Request, res: Response): Promise<void> =
       user: memberId,
     });
 
+    //also remove the member from the team in the database
+    await Team.findOneAndUpdate({ slackChannelId: teamId }, { $pull: { members: memberId } });
+
     res.status(200).json({ message: `User ${memberId} has been removed from channel ${teamId}.` });
   } catch (error: any) {
     console.error('Error removing user from channel:', error);

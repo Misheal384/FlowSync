@@ -1,10 +1,14 @@
 import { Request, Response } from 'express';
 import { Team } from '../models/Team';
 import { Question} from '../models/Question';
+import { Standup } from '../models/Standup';
+
 
 
 import {web as slackClient} from '../config/slack';
 import schedule from 'node-schedule';
+// A map to store scheduled jobs for each channel
+const channelJobs = new Map<string, schedule.Job[]>();
 
 //function required to create a team
 export const createTeam = async (req: Request, res: Response): Promise<void> => {
@@ -114,28 +118,38 @@ export const deleteTeam = async (req: Request, res: Response): Promise<void> => 
 };
 
 
-//sending usual reminders to teams
-function scheduleChannelReminder(channel: string, text: string, scheduleTime: Date): void {
-  schedule.scheduleJob(scheduleTime, async () => {
-      try {
-          const result = await slackClient.chat.postMessage({
-              channel,
-              text,
-          });
-          console.log(`Reminder sent to channel ${channel}:`, result);
-      } catch (error) {
-          console.error(`Failed to send reminder to channel ${channel}:`, error);
-      }
+
+function scheduleDailyChannelReminder(team: string, text: string, startTime: Date): void {
+  const rule = new schedule.RecurrenceRule();
+  rule.hour = startTime.getUTCHours();
+  rule.minute = startTime.getUTCMinutes();
+
+  const job = schedule.scheduleJob(rule, async () => {
+    try {
+      const result = await slackClient.chat.postMessage({
+        channel: team,
+        text,
+      });
+      console.log(`Daily reminder sent to channel ${team}:`, result);
+    } catch (error) {
+      console.error(`Failed to send reminder to channel ${team}:`, error);
+    }
   });
+
+  // Track jobs for this channel
+  if (!channelJobs.has(team)) {
+    channelJobs.set(team, []);
+  }
+  channelJobs.get(team)!.push(job);
 }
 
-//set team reminder using arguments set in the post request
-export function scheduleTeamReminder(req: Request, res: Response): void {
-  const { channel, text, scheduleTime } = req.body;
-  console.log('Received POST /teams/team-reminder request with body:', req.body);
+//function for a controller to set team reminder
+export const scheduleTeamReminder = async (req: Request, res: Response): Promise<void> => {
+  const { team, text, time } = req.body;
+
   try {
-    scheduleChannelReminder(channel, text, scheduleTime);
-    res.status(201).json({ message: 'Team reminder scheduled successfully' });
+    scheduleDailyChannelReminder(team, text, new Date(time));
+    res.status(200).json({ message: 'Reminder scheduled successfully' });
   } catch (error: any) {
     // Enhanced error logging
     console.error('Error in scheduleTeamReminder:', {
@@ -144,8 +158,66 @@ export function scheduleTeamReminder(req: Request, res: Response): void {
       body: req.body,
     });
 
-    res.status(400).json({ error: error.message || 'Unknown error occurred' });
+    res.status(400).json({ error: error.message });
+  }
+};
+
+//function to remove all reminders for a channel
+function removeAllRemindersForChannel(team: string): void {
+  if (channelJobs.has(team)) {
+    const jobs = channelJobs.get(team)!;
+    jobs.forEach(job => job.cancel()); // Cancel each job
+    channelJobs.delete(team); // Remove the entry for this channel
+    console.log(`All reminders for channel ${team} have been removed.`);
+  } else {
+    console.log(`No reminders found for channel ${team}.`);
   }
 }
+
+//function to serve as controller to remove all reminders
+export const removeAllReminders = async (req: Request, res: Response): Promise<void> => {
+  const team = req.params.team;
+
+  try {
+    removeAllRemindersForChannel(team);
+    res.status(200).json({ message: 'All reminders removed successfully for team' });
+  } catch (error: any) {
+    // Enhanced error logging
+    console.error('Error in removeAllReminders:', {
+      message: error.message,
+      stack: error.stack,
+    });
+
+    res.status(400).json({ error: error.message });
+  }
+};
+
+
+//get all teams with their standups and members associated with them
+export const getTeamsWithStandupsAndMembers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const teams = await Team.find();
+    const teamsWithStandupsAndMembers = await Promise.all(
+      teams.map(async (team) => {
+        const standups = await Standup.find({ team: team._id });
+        const members = await slackClient.conversations.members({ channel: team.slackChannelId });
+        return {
+          team,
+          standups,
+          members,
+        };
+      })
+    );
+    res.json(teamsWithStandupsAndMembers);
+  } catch (error: any) {
+    // Enhanced error logging
+    console.error('Error in getTeamsWithStandupsAndMembers:', {
+      message: error.message,
+      stack: error.stack,
+    });
+
+    res.status(400).json({ error: error.message });
+  }
+};
 
 

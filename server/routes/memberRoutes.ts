@@ -1,5 +1,5 @@
 import express from 'express';
-import { addMember, removeMember, getMembers, getAllUsers} from '../controllers/memberController';
+import { addMembers, removeMember, getMembers, getAllUsers} from '../controllers/memberController';
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.get('/:teamId/', getMembers);
  *       200:
  *         description: Success
  */
-router.post('/:teamId/', addMember);
+router.post('/:teamId/', addMembers);
 
 // Remove a member from a team
 /**
