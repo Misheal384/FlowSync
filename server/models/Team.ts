@@ -7,6 +7,7 @@ export interface ITeam extends Document {
   schedule: string;
   members: Types.ObjectId[];
   description: string;
+  is_archived: boolean;
 }
 
 const teamSchema: Schema = new Schema({
@@ -16,6 +17,7 @@ const teamSchema: Schema = new Schema({
   slackChannelId: { type: String, required: false },
   description: { type: String },
   members: [{type: String}],
+  is_archived: { type: Boolean, default: false },
 });
 
 export const Team = mongoose.model<ITeam>('Team', teamSchema);

@@ -36,7 +36,7 @@ export const home_pub = () =>{
                         type: "plain_text",
                         text: "Read about FlowSync"
                       },
-                      "url": "http://"
+                      "url": "http://localhost:5173/"
                     },
                     {
                       type: "button",
@@ -44,7 +44,7 @@ export const home_pub = () =>{
                         type: "plain_text",
                         text: "Get Started"
                       },
-                      "url": "http://"
+                      "url": "http://localhost:5173/"
                     }
                   ]
                 }

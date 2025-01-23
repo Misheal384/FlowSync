@@ -68,15 +68,15 @@ async function getTeamsWithMembers() {
   try {
     // Fetch the list of channels
     const response = await slackClient.conversations.list();
-
+    console.log(response);
     if (response.ok) {
       const channels = response.channels;
 
       // Fetch members for each channel
       if(channels){
         const teamsWithMembers = await Promise.all(
-          channels.map(async (channel: { id?: string; name?: string }) => {
-            if(channel.id){
+          channels.map(async (channel: { id?: string; name?: string; is_archived?: boolean }) => {
+            if(channel.id && !channel.is_archived){
               const members = await getChannelMembers(channel.id);
               return {
                 id: channel.id,
@@ -104,9 +104,9 @@ getTeamsWithMembers().then(async (teamsWithMembers) => {
     try {
       // Iterate using for...of to properly handle async operations sequentially
       for (const team of teamsWithMembers) {
-        if (team && team.id) {
+        if (team && team.id ) {
           const existingTeam = await Team.findOne({ slackChannelId: team.id });
-          if (!existingTeam) {
+          if (!existingTeam ) {
             await Team.create({
               slackChannelId: team.id,
               name: team.name,
