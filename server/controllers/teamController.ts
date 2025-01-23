@@ -1,10 +1,14 @@
 import { Request, Response } from 'express';
 import { Team } from '../models/Team';
 import { Question} from '../models/Question';
+import { Standup } from '../models/Standup';
+
 
 
 import {web as slackClient} from '../config/slack';
 import schedule from 'node-schedule';
+// A map to store scheduled jobs for each channel
+const channelJobs = new Map<string, schedule.Job[]>();
 
 //function required to create a team
 export const createTeam = async (req: Request, res: Response): Promise<void> => {
@@ -149,6 +153,12 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
       console.error(`Failed to send reminder to channel ${channel} or its members:`, error);
     }
   });
+
+  // Track jobs for this channel
+  // if (!channelJobs.has(team)) {
+  //   channelJobs.set(team, []);
+  // }
+  // channelJobs.get(team)!.push(job);
 }
 
 // Set team reminder using arguments set in the post request
@@ -167,6 +177,18 @@ export function scheduleTeamReminder(req: Request, res: Response): void {
       body: req.body,
     });
 
-    res.status(400).json({ error: error.message || 'Unknown error occurred' });
+    res.status(400).json({ error: error.message });
+  }
+};
+
+//function to remove all reminders for a channel
+function removeAllRemindersForChannel(team: string): void {
+  if (channelJobs.has(team)) {
+    const jobs = channelJobs.get(team)!;
+    jobs.forEach(job => job.cancel()); // Cancel each job
+    channelJobs.delete(team); // Remove the entry for this channel
+    console.log(`All reminders for channel ${team} have been removed.`);
+  } else {
+    console.log(`No reminders found for channel ${team}.`);
   }
 }

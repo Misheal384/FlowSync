@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitStandup, getStandupAnswers,getAllStandupQuestions, configureStandupQuestions, getStandupQuestions, getNotResponded } from '../controllers/standupController';
+import { submitStandup, getStandupAnswers,getAllStandupQuestions, configureStandupQuestions, getStandupQuestions, getNotResponded, getAllStandups } from '../controllers/standupController';
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.get('/questions', getAllStandupQuestions);
 router.post('/team/:teamId/members/:memberId/standup', submitStandup);
 
 //get standup answers
-router.get('/answers', getStandupAnswers);
+router.get('/answers', getAllStandups);
 
 //get not responded
 router.get('/not-responded', getNotResponded);
