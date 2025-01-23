@@ -1,5 +1,5 @@
 import express from 'express';
-import { createTeam, deleteTeam, getTeams,getTeamsWithQuestions, scheduleTeamReminder, removeAllReminders, getTeamsWithStandupsAndMembers } from '../controllers/teamController';
+import { createTeam, deleteTeam, getTeams,getTeamsWithQuestions, scheduleTeamReminder } from '../controllers/teamController';
 
 
 
@@ -20,11 +20,6 @@ router.delete('/:teamId', deleteTeam);
 //schedule reminder for teams
 router.post('/team-reminder', scheduleTeamReminder);
 
-//remove all reminders
-router.delete('/team-reminder/:teamId', removeAllReminders);
-
-//all teams with their standups
-router.get('/standups', getTeamsWithStandupsAndMembers);
 
 
 export default router;
