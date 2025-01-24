@@ -90,33 +90,41 @@ export const getTeamsWithQuestions = async (req: Request, res: Response): Promis
   }
 };
 
-//function required to delete a team
+// Function required to delete a team
 export const deleteTeam = async (req: Request, res: Response): Promise<void> => {
   const { teamId } = req.params; // Slack channel ID
 
   try {
-     // Delete the Slack channel associated with the team
-    await slackClient.conversations.archive({ channel: teamId });
+    // Attempt to delete the Slack channel associated with the team
+    try {
+      await slackClient.conversations.archive({ channel: teamId });
+    } catch (archiveError: any) {
+      if (archiveError.data.error === 'not_in_channel') {
+        console.warn(`Bot is not in the channel ${teamId}, proceeding with team deletion.`);
+      } else {
+        throw archiveError;
+      }
+    }
 
-    // Find the team by Slack channel ID
+    // Find the team by Slack channel ID and delete it
     const team = await Team.findOneAndDelete({ slackChannelId: teamId });
 
     if (!team) {
-      res.status(404).json({ message: 'Team not found' });
+      res.status(404).json({ message: `Team with Slack ID ${teamId} not found` });
       return;
     }
 
-    res.status(200).json({ message: 'Team deleted successfully' });
+    res.status(200).json({ message: `Team with Slack ID ${teamId} deleted successfully` });
   } catch (error: any) {
     // Enhanced error logging
     console.error('Error in deleteTeam:', {
       message: error.message,
       stack: error.stack,
+      teamId,
     });
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: `Failed to delete team with Slack ID ${teamId}: ${error.message}` });
   }
 };
-
 
 //sending usual reminders to teams channel to remind them
 
@@ -181,14 +189,4 @@ export function scheduleTeamReminder(req: Request, res: Response): void {
   }
 };
 
-//function to remove all reminders for a channel
-function removeAllRemindersForChannel(team: string): void {
-  if (channelJobs.has(team)) {
-    const jobs = channelJobs.get(team)!;
-    jobs.forEach(job => job.cancel()); // Cancel each job
-    channelJobs.delete(team); // Remove the entry for this channel
-    console.log(`All reminders for channel ${team} have been removed.`);
-  } else {
-    console.log(`No reminders found for channel ${team}.`);
-  }
-}
+
