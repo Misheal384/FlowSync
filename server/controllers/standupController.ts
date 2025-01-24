@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Standup } from '../models/Standup';
 import { Question } from '../models/Question';
 import { Team } from '../models/Team';
-import {web as slackClient} from '../config/slack';
+import { Member } from '../models/Member';
 
 //function to submit standup questions configured
 export const configureStandupQuestions = async (req: Request, res: Response): Promise<void> => {
@@ -45,53 +45,62 @@ export const getStandupQuestions = async (req: Request, res: Response): Promise<
     }
   }
 
-//function to get all configured standup questions
-export const getAllStandupQuestions = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const questions = await Question.find();
-    res.json({ questions: questions });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-
-//function to submit standup updates to the database
-export const submitStandup = async (req: Request, res: Response): Promise<void> => {
-  const { teamId, memberId } = req.params;
-  const { update } = req.body; 
-
-  try {
-    const team = await Team.findOne({slackChannelId: teamId});
-
-    if (!team) {
-      throw new Error(`Team with ID ${teamId} not found`);
+  //function to submit standup answers
+  export const submitStandup = async (req: Request, res: Response): Promise<void> => {
+    const { teamId, memberId } = req.params;
+    const { update } = req.body;
+  
+    try {
+      const team = await Team.findOne({ slackChannelId: teamId });
+      const member = await Member.findOne({ slackId: memberId });
+  
+      if (!team) {
+        throw new Error(`Team with ID ${teamId} not found`);
+      }
+  
+      if (!member) {
+        throw new Error(`Member with ID ${memberId} not found`);
+      }
+  
+      const today = new Date().toISOString().split('T')[0];
+      const existingStandup = await Standup.findOne({
+        team: team.id,
+        member: member.id,
+        date: today,
+      });
+  
+      if (existingStandup) {
+        res.status(400).json({ message: 'Standup already submitted for today' });
+      }
+  
+      // Resolve question ObjectIds
+      const questions = await Question.find({
+        _id: { $in: update.map((u: any) => u.question) },
+      });
+  
+      if (questions.length !== update.length) {
+        throw new Error('One or more questions are invalid');
+      }
+  
+      const formattedUpdate = update.map((u: any) => ({
+        question: u.question, // Ensure this is the ObjectId of the question
+        answer: u.answer,
+      }));
+  
+      const standup = new Standup({
+        team: team.id,
+        member: member.id,
+        date: today,
+        update: formattedUpdate,
+      });
+  
+      await standup.save();
+      res.status(201).json({ message: 'Standup submitted successfully', standup });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
-
-    const today = new Date().toISOString().split('T')[0]; // Ensure date consistency
-    const existingStandup = await Standup.findOne({
-      team: team.id,
-      member: memberId,
-      date: today,
-    });
-
-    if (existingStandup) {
-      res.status(400).json({ message: 'Standup already submitted for today' });
-    }
-
-    const standup = new Standup({
-      team: team.id,
-      member: memberId,
-      date: today,
-      update,
-    });
-
-    await standup.save();
-    res.status(201).json({ message: 'Standup submitted successfully', standup });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+  };
+  
 
 
 //function to get standup answers from the database
@@ -183,7 +192,8 @@ export const getStandupAnswers = async (req: Request, res: Response): Promise<vo
     try {
       const standups = await Standup.find()
       .populate({ path: 'team', select: 'name', options: { strictPopulate: true } })
-      .populate('member', 'name');
+      .populate('member', 'name')
+      .populate('update.question', 'text');
 
       res.status(200).json({ standups });
     } catch (error: any) {

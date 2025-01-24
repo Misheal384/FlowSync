@@ -1,6 +1,7 @@
 import {redisClient} from '../config/redis';
 import {web as slackClient} from '../config/slack';
 import { Team } from '../models/Team';
+import { Member } from '../models/Member';
 
 export async function cacheMembersInRedis() {
     try {
@@ -16,12 +17,37 @@ export async function cacheMembersInRedis() {
               await redisClient.set(`slackUser:${member.id}`, member.name);
             }
           }
-          console.log('All members have been cached in Redis successfully');
+          //console.log('All members have been cached in Redis successfully');
+
+              //and then put them inside the database too
+            for (const member of members) {
+              if (member.id && member.name) {
+                const existingMember = await Member.findOne({ slackId: member.id });
+                if (existingMember) {
+                  // Update the existing member
+                  await Member.updateOne(
+                    { slackId: member.id },
+                    {
+                      name: member.name,
+                    }
+                  );
+                }
+                else {
+                  // Create a new member
+                  await Member.create({
+                    slackId: member.id,
+                    name: member.name,
+                  });
+                }
+              }
+            }
+            console.log('All members have been cached in Redis and database successfully');
         }
       } else {
         throw new Error('Error fetching members');
       }
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Error caching members in Redis:', error);
     }
   }
