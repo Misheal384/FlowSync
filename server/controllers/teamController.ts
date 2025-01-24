@@ -132,26 +132,49 @@ export const deleteTeam = async (req: Request, res: Response): Promise<void> => 
 
 
 // Sending usual reminders to team's channel and members to remind them
-async function scheduleChannelReminder(channel: string, text: string, scheduleTime: Date): Promise<void> {
+async function scheduleChannelReminder(channel: string, text: string, scheduleTime: Date, url: string): Promise<void> {
   schedule.scheduleJob(scheduleTime, async () => {
     try {
-      // Send reminder to the team channel
-      const channelResult = await slackClient.chat.postMessage({
+      // Define the message with the button
+      const message = {
         channel,
         text,
-      });
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: 'respond',
+            },
+          },
+          {
+            type: "actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Visit the Page",
+                },
+                url: url, 
+              },
+            ],
+          },
+        ],
+      };
+
+      // Send reminder to the team channel with the button
+      const channelResult = await slackClient.chat.postMessage(message);
       console.log(`Reminder sent to channel ${channel}:`, channelResult);
 
       // Find the team by channel ID to get the members
       const channelId = channel.toString();
       const team = await Team.findOne({ slackChannelId: channelId });
       if (team && team.members) {
-        // Convert ObjectId to string and send reminders
+        // Convert ObjectId to string and send reminders with the button
         for (const memberId of team.members.map((id: any) => id.toString())) {
-          const memberResult = await slackClient.chat.postMessage({
-            channel: memberId,
-            text,
-          });
+          const memberMessage = { ...message, channel: memberId };
+          const memberResult = await slackClient.chat.postMessage(memberMessage);
           console.log(`Reminder sent to member ${memberId}:`, memberResult);
         }
       } else {
@@ -161,21 +184,18 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
       console.error(`Failed to send reminder to channel ${channel} or its members:`, error);
     }
   });
-
-  // Track jobs for this channel
-  // if (!channelJobs.has(team)) {
-  //   channelJobs.set(team, []);
-  // }
-  // channelJobs.get(team)!.push(job);
 }
+
 
 // Set team reminder using arguments set in the post request
 export function scheduleTeamReminder(req: Request, res: Response): void {
   const { channel, text, scheduleTime } = req.body;
+
+  const url = `http://localhost:5173/standup-answer/${channel}`
   console.log('Received POST /teams/team-reminder request with body:', req.body);
   try {
     const scheduleDate = new Date(scheduleTime); // Convert scheduleTime to Date object
-    scheduleChannelReminder(channel, text, scheduleDate);
+    scheduleChannelReminder(channel, text, scheduleDate, url);
     res.status(201).json({ message: 'Team reminder scheduled successfully' });
   } catch (error: any) {
     // Enhanced error logging
