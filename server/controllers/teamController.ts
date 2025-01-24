@@ -173,7 +173,27 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
       if (team && team.members) {
         // Convert ObjectId to string and send reminders with the button
         for (const memberId of team.members.map((id: any) => id.toString())) {
-          const memberMessage = { ...message, channel: memberId };
+          // Append memberId to the URL as a query parameter
+          const memberUrl = `${url}?memberId=${memberId}`;
+
+          // Create the member message with the modified URL
+          const memberMessage = { 
+            ...message, 
+            channel: memberId,
+            blocks: message.blocks.map(block => {
+              if (block.type === "actions") {
+                return {
+                  ...block,
+                  elements: block.elements?.map(element => ({
+                    ...element,
+                    url: memberUrl, // Use the new URL with the memberId
+                  })),
+                };
+              }
+              return block;
+            }),
+          };
+
           const memberResult = await slackClient.chat.postMessage(memberMessage);
           console.log(`Reminder sent to member ${memberId}:`, memberResult);
         }
@@ -185,6 +205,7 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
     }
   });
 }
+
 
 
 // Set team reminder using arguments set in the post request
