@@ -136,7 +136,7 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
             type: "section",
             text: {
               type: "mrkdwn",
-              text: 'respond',
+              text: 'Please fill in for your standups',
             },
           },
           {
@@ -146,7 +146,7 @@ async function scheduleChannelReminder(channel: string, text: string, scheduleTi
                 type: "button",
                 text: {
                   type: "plain_text",
-                  text: "Visit the Page",
+                  text: "Proceed to Fill",
                 },
                 url: url, 
               },
