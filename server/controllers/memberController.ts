@@ -3,6 +3,7 @@ import { Member } from '../models/Member';
 import { Team } from '../models/Team';
 // import { WebClient } from '@slack/web-api';
 // const slackClient = new WebClient(process.env.SLACK_BOT_TOKEN);
+import {redisClient} from '../config/redis';
 
 import {web as slackClient} from '../config/slack';
 import schedule from 'node-schedule';
@@ -22,10 +23,10 @@ export const addMembers = async (req: Request, res: Response): Promise<void> => 
     const teamUpdates: any[] = []; // To keep track of successful updates
 
     for (const member of members) {
-      const { name, slackId } = member;
+      const { name, id } = member;
 
-      if (!name || !slackId) {
-        res.status(400).json({ error: 'Each member must have "name" and "slackId".' });
+      if (!name || !id) {
+        res.status(400).json({ error: 'Each member must have "name" and "id".' });
         return;
       }
 
@@ -33,13 +34,13 @@ export const addMembers = async (req: Request, res: Response): Promise<void> => 
         // Invite the member to the Slack channel
         await slackClient.conversations.invite({
           channel: slackChannelId,
-          users: slackId,
+          users: id,
         });
 
         // Update the team in the database
         const team = await Team.findOneAndUpdate(
           { slackChannelId: teamId },
-          { $push: { members: slackId } },
+          { $push: { members: id } },
           { new: true }
         );
 
@@ -47,10 +48,10 @@ export const addMembers = async (req: Request, res: Response): Promise<void> => 
           throw new Error(`Team with Slack ID ${teamId} not found`);
         }
 
-        teamUpdates.push({ name, slackId });
+        teamUpdates.push({ name, id });
       } catch (inviteError: any) {
         if (inviteError.data.error === 'already_in_channel') {
-          console.warn(`User ${slackId} is already in the channel.`);
+          console.warn(`User ${id} is already in the channel.`);
         } else {
           throw inviteError;
         }
@@ -76,26 +77,16 @@ export const addMembers = async (req: Request, res: Response): Promise<void> => 
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     let allUsers : any = [];
-    let cursor: string | undefined = undefined;
 
-    // Loop to handle pagination if there are more than 100 users
-    do {
-      // Passing an empty object or an object with cursor to users.list
-      const response = await slackClient.users.list({ cursor });
-
-      if (response.ok) {
-        if (response.members) {
-          allUsers = [...allUsers, ...response.members];
-        }
-        cursor = response.response_metadata?.next_cursor; // Get the next cursor if it exists
-      }else{
-        res.status(400).json({ error: 'Failed to retrieve users from Slack' });
-         return;
+    //get all members from the redis cache with tag slackUser
+    const keys = await redisClient.keys('*');
+    for (const key of keys) {
+      if (key.startsWith('slackUser:')) {
+        const value = await redisClient.get(key);
+        allUsers.push({ id: key.split(':')[1], name: value });
       }
-
-    } while (cursor);  // Continue until there's no more data
-
-    // Respond with the full list of users
+    }
+   
     res.status(200).json({ users: allUsers });
   } catch (error: any) {
     console.error('Error in getAllUsers:', {

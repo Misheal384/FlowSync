@@ -8,9 +8,7 @@ import { slackApp } from './server/config/slack';
 import { appMentionRespond, greetingRespond } from './server/slack_activities/interactions';
 import { home_pub } from './server/slack_activities/slack_home';
 
-import {web as slackClient} from './server/config/slack';
-import { Team } from './server/models/Team';
-import {redisClient} from './server/config/redis';
+import { cacheMembersInRedis, processTeamsWithMembers } from './server/utils/consistent';
 
 import cors from 'cors';
 
@@ -44,129 +42,11 @@ app.use((req, res) => {
   res.status(404).send(`Route not found: ${req.method} ${req.url}`);
 });
 
-//geting all teams and their members
-async function getChannelMembers(channelId: string) {
-  try {
-    // Fetch members of the channel
-    const response = await slackClient.conversations.members({
-      channel: channelId,
-    });
+//get all teams with their members into the database
+processTeamsWithMembers();
 
-    if (response.ok) {
-      return response.members;
-    } else {
-      throw new Error('Error fetching members');
-    }
-  } catch (error) {
-    console.error(`Error fetching members for channel ${channelId}:`, error);
-    return [];
-  }
-}
-
-// Function to fetch channels and their members
-async function getTeamsWithMembers() {
-  try {
-    // Fetch the list of channels
-    const response = await slackClient.conversations.list();
-    
-    if (response.ok) {
-      const channels = response.channels;
-
-      // Fetch members for each channel
-      if(channels){
-        const teamsWithMembers = await Promise.all(
-          channels.map(async (channel: { id?: string; name?: string; is_archived?: boolean }) => {
-            if(channel.id && !channel.is_archived){
-              const members = await getChannelMembers(channel.id);
-              return {
-                id: channel.id,
-                name: channel.name,
-                members: members,
-              };
-            }
-          })
-        );
-        return teamsWithMembers;
-      }
-
-    } else {
-      throw new Error('Error fetching channels');
-    }
-  } catch (error) {
-    console.error('Error fetching channels and members:', error);
-    return [];
-  }
-}
-
-// Run the function to get teams with members
-getTeamsWithMembers().then(async (teamsWithMembers) => {
-  if (teamsWithMembers) {
-    try {
-      // Iterate using for...of to properly handle async operations sequentially
-      for (const team of teamsWithMembers) {
-        console.log(team);
-        if (team && team.id) {
-          const existingTeam = await Team.findOne({ slackChannelId: team.id });
-          if (existingTeam) {
-            // Update the existing team
-            await Team.updateOne(
-              { slackChannelId: team.id },
-              {
-                name: team.name,
-                members: team.members,
-                timezone: "UTC",
-              }
-            );
-          } else {
-            // Create a new team
-            await Team.create({
-              slackChannelId: team.id,
-              name: team.name,
-              members: team.members,
-              timezone: "UTC",
-            });
-          }
-        }
-      }
-      console.log('All teams and their members have been processed successfully');
-    } catch (error) {
-      console.error('Error while processing teams:', error);
-    }
-  }
-});
-
-
-//now get all members from slack and then name take on their name and id and cache it in redis
-async function cacheMembersInRedis() {
-  try {
-    const response = await slackClient.users.list({});
-    await redisClient.connect()
-
-    if (response.ok) {
-      const members = response.members;
-
-      if (members) {
-        for (const member of members) {
-          if (member.id && member.name) {
-            await redisClient.set(`slackUser:${member.id}`, member.name);
-          }
-        }
-        console.log('All members have been cached in Redis successfully');
-      }
-    } else {
-      throw new Error('Error fetching members');
-    }
-  } catch (error) {
-    console.error('Error caching members in Redis:', error);
-  }
-}
-
-// Run the function to cache members in Redis
+//cache members in Redis
 cacheMembersInRedis();
-
-
-
-
 
 //slack interactions
 appMentionRespond();

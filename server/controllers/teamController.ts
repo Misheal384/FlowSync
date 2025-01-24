@@ -95,6 +95,9 @@ export const deleteTeam = async (req: Request, res: Response): Promise<void> => 
   const { teamId } = req.params; // Slack channel ID
 
   try {
+     // Delete the Slack channel associated with the team
+    await slackClient.conversations.archive({ channel: teamId });
+
     // Find the team by Slack channel ID
     const team = await Team.findOneAndDelete({ slackChannelId: teamId });
 
@@ -102,9 +105,6 @@ export const deleteTeam = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'Team not found' });
       return;
     }
-
-    // Delete the Slack channel associated with the team
-    await slackClient.conversations.archive({ channel: team.slackChannelId });
 
     res.status(200).json({ message: 'Team deleted successfully' });
   } catch (error: any) {
